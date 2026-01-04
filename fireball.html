@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <title>Candle fire</title>
+        <title>Fireball</title>
         <style>
             html,
             body {
@@ -56,6 +56,7 @@
 
               varying vec2 v_uv;
               uniform float u_time;
+              uniform sampler2D u_fireBase;
 
               float rand(vec2 c){
                   return fract(sin(dot(c, vec2(13.9021, 7.7321))) * 44211.9912);
@@ -99,10 +100,10 @@
 
                   float flameNoise = fbm(vec2(
                       cell.x * 20.0 + sin(u_time * 2.0),
-                      cell.y * 10.0 - u_time * 4.0
+                      cell.y * 10.0 - u_time * 10.0
                   ));
 
-                  float base = (1.0 - (pow(cell.y - 1.01, 8.0) - pow(cell.y - 1.02, 10.0) - pow(abs(cell.x - 0.5) * 2.0, 2.0)) * 50.0);
+                  float base = 1.0 - texture2D(u_fireBase, vec2(cell.x, 1.0 - cell.y)).r * 1.5;
 
                   float flameIntensity = clamp(flameNoise + base, 0.0, 1.0);
 
@@ -121,6 +122,44 @@
               }
 
         `;
+            function initTexture(image) {
+                const texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+
+                gl.texImage2D(
+                    gl.TEXTURE_2D,
+                    0,
+                    gl.RGBA,
+                    gl.RGBA,
+                    gl.UNSIGNED_BYTE,
+                    image,
+                );
+
+                gl.texParameteri(
+                    gl.TEXTURE_2D,
+                    gl.TEXTURE_WRAP_S,
+                    gl.CLAMP_TO_EDGE,
+                );
+                gl.texParameteri(
+                    gl.TEXTURE_2D,
+                    gl.TEXTURE_WRAP_T,
+                    gl.CLAMP_TO_EDGE,
+                );
+                gl.texParameteri(
+                    gl.TEXTURE_2D,
+                    gl.TEXTURE_MIN_FILTER,
+                    gl.LINEAR,
+                );
+                gl.texParameteri(
+                    gl.TEXTURE_2D,
+                    gl.TEXTURE_MAG_FILTER,
+                    gl.LINEAR,
+                );
+
+                gl.bindTexture(gl.TEXTURE_2D, null);
+
+                return texture;
+            }
 
             function createShader(type, src) {
                 const s = gl.createShader(type);
@@ -150,6 +189,16 @@
             gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0);
 
             const u_time = gl.getUniformLocation(program, "u_time");
+            const u_fireBase = gl.getUniformLocation(program, "u_fireBase");
+
+            const baseImage = new Image();
+            baseImage.src = "base.png";
+            baseImage.onload = () => {
+                const baseTexture = initTexture(baseImage);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, baseTexture);
+                gl.uniform1i(u_fireBase, 0);
+            };
 
             function draw(timeMs) {
                 gl.uniform1f(u_time, timeMs / 1000);
